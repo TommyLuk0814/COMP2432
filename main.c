@@ -196,65 +196,62 @@ void executeCommand(char *keyword[],int keywordLength ) {
     }
 
 }
-
-
 void readBatchFile(char *filename) {
-    // Remove trailing semicolon if present
-    int len = strlen(filename);
-    if (filename[len - 1] == ';') {
-        filename[len - 1] = '\0';
-    }
+    // 處理開頭 '-' 和結尾 ';'
+    char cleaned[100];
+    strncpy(cleaned, filename, sizeof(cleaned));
+    cleaned[sizeof(cleaned) - 1] = '\0';
 
-    // Remove leading '-'
-    memmove(filename, filename + 1, strlen(filename));
+    int len = strlen(cleaned);
+    if (cleaned[len - 1] == ';') cleaned[len - 1] = '\0';
+    if (cleaned[0] == '-') memmove(cleaned, cleaned + 1, strlen(cleaned));
 
-
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
-        printf("Error: could not open file %s\n", filename);
+    FILE *file = fopen(cleaned, "r");
+    if (!file) {
+        printf("-> Could not open file: %s\n", cleaned);
         return;
     }
 
-    // read the entire file into the buffer
-    char buffer[100000];
-    size_t length = fread(buffer, 1, sizeof(buffer) - 1, file);
-    buffer[length] = '\0'; // end-of-string supplement \0 makes it a string
+    char *buffer = malloc(100000);
+    if (!buffer) {
+        printf("-> Memory allocation failed.\n");
+        fclose(file);
+        return;
+    }
+
+    size_t length = fread(buffer, 1, 99999, file);
+    buffer[length] = '\0';
     fclose(file);
 
-    // divide by ';'
-    char *sentences[100000]; //
-    int sentenceCount = 0;
+    // 分句（去除空格但保留 ; 在最後一個 word）
+    char *saveptr1;
+    char *sentence = strtok_r(buffer, ";", &saveptr1);
+    while (sentence != NULL) {
+        while (*sentence == ' ' || *sentence == '\n' || *sentence == '\r') sentence++;  // 去除開頭空白及換行符
 
-    char *raw = strtok(buffer, ";");
-    while (raw != NULL && sentenceCount < 100) {
-        while (*raw == ' ') raw++;  // 去掉開頭空格
-
-        // 用副本保護 strtok() 內容
-        char rawCopy[200];
-        strncpy(rawCopy, raw, sizeof(rawCopy) - 1);
-        rawCopy[sizeof(rawCopy) - 1] = '\0';
-
-        // 補回分號（只為 debug 用）
+        // 加回句尾的 ;
         char fullSentence[256];
-        snprintf(fullSentence, sizeof(fullSentence), "%s;", rawCopy);
-        printf("Processing: %s\n", fullSentence);
+        snprintf(fullSentence, sizeof(fullSentence), "%s;", sentence);
 
-        // 把句子轉為 keyword[]
+        // 拆字
         char *keyword[10];
         int keywordLength = 0;
-        char *word = strtok(rawCopy, " ");
+
+        char *saveptr2;
+        char *word = strtok_r(fullSentence, " ", &saveptr2);
         while (word != NULL && keywordLength < 10) {
             keyword[keywordLength++] = word;
-            word = strtok(NULL, " ");
+            word = strtok_r(NULL, " ", &saveptr2);
         }
 
         if (keywordLength > 0) {
             executeCommand(keyword, keywordLength);
         }
 
-        raw = strtok(NULL, ";");  // 再切下一句
+        sentence = strtok_r(NULL, ";", &saveptr1);  // 下一句
     }
 
+    free(buffer);
 }
 
 //addParking -aaa YYYY-MM-DD hh:mm n.n bbb ccc;
