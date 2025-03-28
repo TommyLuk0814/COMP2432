@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "node.h"
+#include "schedule_module.c"
 
 
 void readFromUserInput();
@@ -57,6 +58,28 @@ int main() {
             readBatchFile(keyword[1]);
 
         } else if (strcmp(keyword[0], "printBookings") == 0) {
+            Node *accepted = NULL;
+            Node *rejected = NULL;
+            if (strcmp(keyword[1], "fcfs") == 0) {
+                print_bookings_fcfs(head, accepted, rejected);
+                //Doing something with accepted and rejected
+                //Print out
+            } else if (strcmp(keyword[1], "prio") == 0) {
+                print_bookings_priority(head, accepted, rejected);
+                //Doing something with accepted and rejected
+                //Print out
+            } else if (strcmp(keyword[1], "ALL") == 0) {
+                print_bookings_fcfs(head, accepted, rejected);
+                //Doing something with accepted and rejected
+                //Print out
+                //Gen summary txt
+                print_bookings_priority(head, accepted, rejected);
+                //Doing something with accepted and rejected
+                //Print out
+                //Gen summary txt
+            } else {
+                //Wrong algorithm
+            }
         } else if (strcmp(keyword[0], "endProgram") == 0) {
             printf("-> Bye!\n");
             break;
