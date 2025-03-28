@@ -4,7 +4,6 @@
 #include <time.h>
 #include <signal.h>
 #include <unistd.h>
-#include <sys/wait.h>
 #include "node.h"
 
 #define MAX_MEMBERS 5
@@ -35,10 +34,20 @@ int resource_pipes_ptc[RESOURCE_NUM][2];
 int resource_pipes_ctp[RESOURCE_NUM][2];
 pid_t child_pids[RESOURCE_NUM];
 
+Node* create_node(Booking booking);
+void append_node(Node **head, Booking booking);
+void free_list(Node *head);
+void create_resource_managers();
+void resource_manager(int resource_type);
+void cleanup_child_processes();
+int date_to_day_index(const char* date);
+void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected);
+void print_bookings_priority(Node* head, Node* accepted, Node* rejected);
+
 Node* create_node(Booking booking) {
     //Create new node for linked list
     Node *new_node = (Node*)malloc(sizeof(Node));
-    new_node->data = booking;
+    new_node->booking = booking;
     new_node->next = NULL;
     return new_node;
 }
@@ -226,13 +235,11 @@ int date_to_day_index(const char* date) {
 }
 
 void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected) {
-    free_list(accepted);
-    free_list(rejected);
     create_resource_managers();
 
     Node* current = head;
     while (current != NULL) {
-        Booking booking = current->data;
+        Booking booking = current->booking;
 
         //Convert the date to day index
         int start_day = date_to_day_index(booking.date);
@@ -369,7 +376,7 @@ void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected) {
             if (rejected == NULL) {  //Rejected list is null
                 rejected = create_node(booking);
             } else {    //Rejected list is not null
-                append_node(rejected, booking);
+                append_node(&rejected, booking);
             }
         }
 
@@ -402,8 +409,6 @@ void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected) {
 }
 
 void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
-    free_list(accepted);
-    free_list(rejected);
     create_resource_managers();
 
     //Create separate lists for each priority level
@@ -412,7 +417,7 @@ void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
     //Sort bookings into priority lists
     Node* current = head;
     while (current != NULL) {
-        Booking booking = current->data;
+        Booking booking = current->booking;
         
         //Insert into appropriate priority list
         if (booking.priority == 4) {
@@ -447,7 +452,7 @@ void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
     for (int prio = 3; prio >= 0; prio--) {
         current = priority_lists[prio];
         while (current != NULL) {
-            Booking booking = current->data;
+            Booking booking = current->booking;
 
             //Convert the date to day index
             int start_day = date_to_day_index(booking.date);

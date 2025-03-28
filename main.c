@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "node.h"
-#include "schedule_module.c"
+#include "schedule_module.h"
 
 
 void readFromUserInput();
@@ -24,7 +24,7 @@ int checkForTime(const char *time);
 int checkForHours(char *hours) ;
 int checkForEssentials(char* keyword[],int keyLength);
 
-void printLinklist();
+void printLinklist(Node* list);
 
 Node *head = NULL;
 
@@ -58,25 +58,48 @@ int main() {
             readBatchFile(keyword[1]);
 
         } else if (strcmp(keyword[0], "printBookings") == 0) {
-            Node *accepted = NULL;
-            Node *rejected = NULL;
             if (strcmp(keyword[1], "fcfs") == 0) {
+                Node *accepted = NULL;
+                Node *rejected = NULL;
                 print_bookings_fcfs(head, accepted, rejected);
                 //Doing something with accepted and rejected
                 //Print out
+                printLinklist(accepted);
+                printLinklist(rejected);
+                free_list(accepted);
+                free_list(rejected);
             } else if (strcmp(keyword[1], "prio") == 0) {
+                Node *accepted = NULL;
+                Node *rejected = NULL;
                 print_bookings_priority(head, accepted, rejected);
                 //Doing something with accepted and rejected
                 //Print out
+                printLinklist(accepted);
+                printLinklist(rejected);
+                free_list(accepted);
+                free_list(rejected);
             } else if (strcmp(keyword[1], "ALL") == 0) {
-                print_bookings_fcfs(head, accepted, rejected);
+                Node *accepted_fcfs = NULL;
+                Node *rejected_fcfs = NULL;
+                print_bookings_fcfs(head, accepted_fcfs, rejected_fcfs);
                 //Doing something with accepted and rejected
                 //Print out
+                printLinklist(accepted_fcfs);
+                printLinklist(rejected_fcfs);
                 //Gen summary txt
-                print_bookings_priority(head, accepted, rejected);
+                Node *accepted_prio = NULL;
+                Node *rejected_prio = NULL;
+                print_bookings_priority(head, accepted_prio, rejected_prio);
                 //Doing something with accepted and rejected
                 //Print out
+                printLinklist(accepted_prio);
+                printLinklist(rejected_prio);
                 //Gen summary txt
+
+                free_list(accepted_fcfs);
+                free_list(rejected_fcfs);
+                free_list(accepted_prio);
+                free_list(rejected_prio);
             } else {
                 //Wrong algorithm
             }
@@ -84,7 +107,7 @@ int main() {
             printf("-> Bye!\n");
             break;
         }else if (strcmp(keyword[0], "print") == 0) {
-            printLinklist();
+            printLinklist(head);
         }
         else {
             printf("-> Please check your command again.\n");
@@ -94,12 +117,12 @@ int main() {
     return 0;
 }
 
-void printLinklist() {
-    if (head == NULL) {
+void printLinklist(Node* list) {
+    if (list == NULL) {
         printf("-> No bookings to display.\n");
         return;
     }
-    Node *current = head;
+    Node *current = list;
     int count = 1;
     while (current != NULL) {
         Booking *b = &current->booking;
@@ -471,5 +494,3 @@ int checkForEssentials(char* keyword[],int keyLength) {
 
     return isValid;
 }
-
-
