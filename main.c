@@ -58,30 +58,30 @@ int main() {
             readBatchFile(keyword[1]);
 
         } else if (strcmp(keyword[0], "printBookings") == 0) {
-            if (strcmp(keyword[1], "fcfs") == 0) {
+            if (strcmp(keyword[1], "-fcfs") == 0) {
                 Node *accepted = NULL;
                 Node *rejected = NULL;
-                print_bookings_fcfs(head, accepted, rejected);
+                print_bookings_fcfs(head, &accepted, &rejected);
                 //Doing something with accepted and rejected
                 //Print out
                 printLinklist(accepted);
                 printLinklist(rejected);
                 free_list(accepted);
                 free_list(rejected);
-            } else if (strcmp(keyword[1], "prio") == 0) {
+            } else if (strcmp(keyword[1], "-prio") == 0) {
                 Node *accepted = NULL;
                 Node *rejected = NULL;
-                print_bookings_priority(head, accepted, rejected);
+                print_bookings_priority(head, &accepted, &rejected);
                 //Doing something with accepted and rejected
                 //Print out
                 printLinklist(accepted);
                 printLinklist(rejected);
                 free_list(accepted);
                 free_list(rejected);
-            } else if (strcmp(keyword[1], "ALL") == 0) {
+            } else if (strcmp(keyword[1], "-ALL") == 0) {
                 Node *accepted_fcfs = NULL;
                 Node *rejected_fcfs = NULL;
-                print_bookings_fcfs(head, accepted_fcfs, rejected_fcfs);
+                print_bookings_fcfs(head, &accepted_fcfs, &rejected_fcfs);
                 //Doing something with accepted and rejected
                 //Print out
                 printLinklist(accepted_fcfs);
@@ -89,7 +89,7 @@ int main() {
                 //Gen summary txt
                 Node *accepted_prio = NULL;
                 Node *rejected_prio = NULL;
-                print_bookings_priority(head, accepted_prio, rejected_prio);
+                print_bookings_priority(head, &accepted_prio, &rejected_prio);
                 //Doing something with accepted and rejected
                 //Print out
                 printLinklist(accepted_prio);
@@ -106,10 +106,9 @@ int main() {
         } else if (strcmp(keyword[0], "endProgram") == 0) {
             printf("-> Bye!\n");
             break;
-        }else if (strcmp(keyword[0], "print") == 0) {
+        } else if (strcmp(keyword[0], "print") == 0) {
             printLinklist(head);
-        }
-        else {
+        } else {
             printf("-> Please check your command again.\n");
         }
     }
@@ -381,7 +380,8 @@ void insertEssentials(Booking *booking, int numOfEssentials, char *keyword[],int
         return;
     }
 
-    for (int i = 0; i < numOfEssentials; i++) {
+    int i;
+    for (i = 0; i < numOfEssentials; i++) {
         char *essential = keyword[5 + i]; // essentials start from keyword[5]
 
         if (strcmp(essential, "battery") == 0 || strcmp(essential, "cable")  == 0) {
@@ -413,18 +413,18 @@ int checkForMemberName(char *name) {
         "–member_A", "–member_B", "–member_C", "–member_D", "–member_E"
     };
 
-
-    for (int i = 0; i < 5; i++) {
+    int i;
+    for (i = 0; i < 5; i++) {
         if (strcmp(name, validMembers[i]) == 0) {
             // Try to skip UTF-8 encoded dash (e.g., EN DASH or EM DASH, often 3 bytes)
             unsigned char *p = (unsigned char *)name;
             while (*p && *p >= 0x80) p++;  // skip over UTF-8 multibyte prefix
             memmove(name, p, strlen((char *)p) + 1); // shift cleaned name to front
-            return 1;
+            return 0;
         }
     }
 
-    return 0;
+    return 1;
 }
 
 int checkForDate(const char *date) {
@@ -480,9 +480,11 @@ int checkForEssentials(char* keyword[],int keyLength) {
     int isValid = 0;
     int numValidEssentials = sizeof(validEssentials) / sizeof(validEssentials[0]);
 
-    for (int i = 5; i < keyLength; i++) {
+    int i;
+    for (i = 5; i < keyLength; i++) {
         int found = 0;
-        for (int j = 0; j < numValidEssentials; j++) {
+        int j;
+        for (j = 0; j < numValidEssentials; j++) {
             if (strcmp(validEssentials[j], keyword[i]) == 0) {
                 found = 1;
                 break;

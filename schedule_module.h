@@ -41,8 +41,10 @@ void create_resource_managers();
 void resource_manager(int resource_type);
 void cleanup_child_processes();
 int date_to_day_index(const char* date);
-void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected);
-void print_bookings_priority(Node* head, Node* accepted, Node* rejected);
+void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected);
+void print_bookings_priority(Node* head, Node** accepted, Node** rejected);
+
+void print_linkedlist(Node* list);
 
 Node* create_node(Booking booking) {
     //Create new node for linked list
@@ -78,7 +80,8 @@ void free_list(Node *head) {
 
 void create_resource_managers() {
     //Create pipes and fork child processes for each resource type
-    for (int i = 0; i < RESOURCE_NUM; i++) {
+    int i;
+    for (i = 0; i < RESOURCE_NUM; i++) {
         if (pipe(resource_pipes_ptc[i]) == -1) {
             perror("pipe");
         }
@@ -112,9 +115,12 @@ void resource_manager(int resource_type) {
     int resource_time_slot[max_resource_num[resource_type]][TESTING_DAY][TIME_SLOT_PER_DAY];
 
     //Initialize_time_slot
-    for (int resource_id = 0; resource_id < max_resource_num[resource_type]; resource_id++) {
-        for (int day = 0; day < TESTING_DAY; day++) {
-            for (int time_slot = 0; time_slot < TIME_SLOT_PER_DAY; time_slot++) {
+    int resource_id;
+    for (resource_id = 0; resource_id < max_resource_num[resource_type]; resource_id++) {
+        int day;
+        for (day = 0; day < TESTING_DAY; day++) {
+            int time_slot;
+            for (time_slot = 0; time_slot < TIME_SLOT_PER_DAY; time_slot++) {
                 resource_time_slot[resource_id][day][time_slot] = -1;
             }
         }
@@ -135,7 +141,8 @@ void resource_manager(int resource_type) {
         // Check availability based on resource type
         for (resource_id = 0; resource_id < max_resource_num[resource_type]; resource_id++) {
             int available = 1;
-            for (int day = start_day; day <= end_day; day++) {
+            int day;
+            for (day = start_day; day <= end_day; day++) {
                 int start_time_slot = start_hour;
                 int end_time_slot = end_hour;
     
@@ -148,8 +155,9 @@ void resource_manager(int resource_type) {
                 if (day != end_day) {
                     end_time_slot = TIME_SLOT_PER_DAY - 1;
                 }
-    
-                for (int time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
+
+                int time_slot;
+                for (time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
                     if (resource_time_slot[resource_id][day][time_slot] != -1) {
                         //The time slot is not available
                         available = 0;
@@ -173,7 +181,8 @@ void resource_manager(int resource_type) {
         if (read(resource_pipes_ptc[resource_type][0], &schedule, sizeof(int)) <= 0) break;
 
         if (schedule) {
-            for (int day = start_day; day <= end_day; day++) {
+            int day;
+            for (day = start_day; day <= end_day; day++) {
                 int start_time_slot = start_hour;
                 int end_time_slot = end_hour;
 
@@ -187,7 +196,8 @@ void resource_manager(int resource_type) {
                     end_time_slot = TIME_SLOT_PER_DAY - 1;
                 }
 
-                for (int time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
+                int time_slot;
+                for (time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
                     resource_time_slot[resource_id][day][time_slot] = 1;
                 }
             }
@@ -199,7 +209,8 @@ void resource_manager(int resource_type) {
 }
 
 void cleanup_child_processes() {
-    for (int i = 0; i < RESOURCE_NUM; i++) {
+    int i;
+    for (i = 0; i < RESOURCE_NUM; i++) {
         close(resource_pipes_ptc[i][1]);    //Close parent's write end
         if (kill(child_pids[i], SIGTERM) == -1) {   //Send termination signal
             perror("kill");
@@ -214,15 +225,11 @@ int date_to_day_index(const char* date) {
     struct tm current_tm = {0};
     
     //Parse TEST_START_DATE
-    if (strptime(TEST_START_DATE, "%Y-%m-%d", &start_tm) == NULL) {
-        return -1; // Invalid start date format
-    }
+    strptime(TEST_START_DATE, "%Y-%m-%d", &start_tm);
     time_t start_time = mktime(&start_tm);
     
     //Parse input date
-    if (strptime(date, "%Y-%m-%d", &current_tm) == NULL) {
-        return -1; //Invalid date format
-    }
+    strptime(date, "%Y-%m-%d", &current_tm);
     time_t current_time = mktime(&current_tm);
     
     //Calculate difference in seconds
@@ -234,8 +241,37 @@ int date_to_day_index(const char* date) {
     return (days >= 0) ? days : -1;
 }
 
-void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected) {
+void print_linkedlist(Node* list) {
+    if (list == NULL) {
+        printf("-> No bookings to display.\n");
+        return;
+    }
+    Node *current = list;
+    int count = 1;
+    while (current != NULL) {
+        Booking *b = &current->booking;
+        printf("Booking %d:", count++);
+        printf("  Member: %s", b->member);
+        printf("  Date: %s", b->date);
+        printf("  Time: %s", b->time);
+        printf("  Duration: %.1f", b->duration);
+        printf("  Priority: %d", b->priority);
+        printf("  Essentials:");
+        if (b->battery) printf("    - Battery");
+        if (b->cable) printf("    - Cable");
+        if (b->locker) printf("    - Locker");
+        if (b->umbrella) printf("    - Umbrella");
+        if (b->valet) printf("    - Valet Park");
+        if (b->inflation) printf("    - Inflation Service");
+        current = current->next;
+        printf("\n");
+    }
+}
+
+void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
     create_resource_managers();
+    *accepted = NULL;
+    *rejected = NULL;
 
     Node* current = head;
     while (current != NULL) {
@@ -366,17 +402,17 @@ void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected) {
 
         if (all_request_available) {    //All space and items are available
             //Add to accepted list
-            if (accepted == NULL) {  //Accepted list is null
-                accepted = create_node(booking);
+            if (*accepted == NULL) {  //Accepted list is null
+                *accepted = create_node(booking);
             } else {    //Accepted list is not null
-                append_node(&accepted, booking);
+                append_node(accepted, booking);
             }
         } else {    //All space and items are not available
             //Add to rejected list
-            if (rejected == NULL) {  //Rejected list is null
-                rejected = create_node(booking);
+            if (*rejected == NULL) {  //Rejected list is null
+                *rejected = create_node(booking);
             } else {    //Rejected list is not null
-                append_node(&rejected, booking);
+                append_node(rejected, booking);
             }
         }
 
@@ -408,8 +444,10 @@ void print_bookings_fcfs(Node* head, Node* accepted, Node* rejected) {
     cleanup_child_processes();
 }
 
-void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
+void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
     create_resource_managers();
+    *accepted = NULL;
+    *rejected = NULL;
 
     //Create separate lists for each priority level
     Node* priority_lists[4] = {NULL}; // Index 0 unused, priorities are 1-4
@@ -449,7 +487,8 @@ void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
     }
     
     //Process bookings in priority order (4 first, then 3, then 2, then 1)
-    for (int prio = 3; prio >= 0; prio--) {
+    int prio;
+    for (prio = 3; prio >= 0; prio--) {
         current = priority_lists[prio];
         while (current != NULL) {
             Booking booking = current->booking;
@@ -578,17 +617,17 @@ void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
 
             if (all_request_available) {    //All space and items are available
                 //Add to accepted list
-                if (accepted == NULL) { //Accepted list is null
-                    accepted = create_node(booking);
+                if (*accepted == NULL) { //Accepted list is null
+                    *accepted = create_node(booking);
                 } else {    //Accepted list is not null
-                    append_node(&accepted, booking);
+                    append_node(accepted, booking);
                 }
             } else {    // Not all resources available
                 // Add to rejected list
-                if (rejected == NULL) {
-                    rejected = create_node(booking);
+                if (*rejected == NULL) {
+                    *rejected = create_node(booking);
                 } else {
-                    append_node(&rejected, booking);
+                    append_node(rejected, booking);
                 }
             }
 
@@ -620,7 +659,8 @@ void print_bookings_priority(Node* head, Node* accepted, Node* rejected) {
     }
 
     //Free priority lists
-    for (int i = 0; i < 4; i++) {
+    int i;
+    for (i = 0; i < 4; i++) {
         free_list(priority_lists[i]);
     }
 
