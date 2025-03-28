@@ -4,7 +4,6 @@
 #include "node.h"
 #include "schedule_module.h"
 
-
 void readFromUserInput();
 void executeCommand(char *keyword[],int keywordLength );
 

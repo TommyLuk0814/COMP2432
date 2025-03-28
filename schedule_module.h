@@ -44,8 +44,6 @@ int date_to_day_index(const char* date);
 void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected);
 void print_bookings_priority(Node* head, Node** accepted, Node** rejected);
 
-void print_linkedlist(Node* list);
-
 Node* create_node(Booking booking) {
     //Create new node for linked list
     Node *new_node = (Node*)malloc(sizeof(Node));
@@ -239,33 +237,6 @@ int date_to_day_index(const char* date) {
     int days = (int)(seconds / 86400);
     
     return (days >= 0) ? days : -1;
-}
-
-void print_linkedlist(Node* list) {
-    if (list == NULL) {
-        printf("-> No bookings to display.\n");
-        return;
-    }
-    Node *current = list;
-    int count = 1;
-    while (current != NULL) {
-        Booking *b = &current->booking;
-        printf("Booking %d:", count++);
-        printf("  Member: %s", b->member);
-        printf("  Date: %s", b->date);
-        printf("  Time: %s", b->time);
-        printf("  Duration: %.1f", b->duration);
-        printf("  Priority: %d", b->priority);
-        printf("  Essentials:");
-        if (b->battery) printf("    - Battery");
-        if (b->cable) printf("    - Cable");
-        if (b->locker) printf("    - Locker");
-        if (b->umbrella) printf("    - Umbrella");
-        if (b->valet) printf("    - Valet Park");
-        if (b->inflation) printf("    - Inflation Service");
-        current = current->next;
-        printf("\n");
-    }
 }
 
 void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
