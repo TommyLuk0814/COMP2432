@@ -1,0 +1,4 @@
+addParking -member_A 2025-05-15 00:00 3.0 battery cable;
+addReservation -member_B 2025-05-10 04:00 3.0 battery cable;
+bookEssentials -member_E 2025-05-13 16:00 2.0 cable;
+addEvent -member_E 2025-05-11 16:00 5.0 umbrella battery cable;

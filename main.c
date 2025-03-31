@@ -26,6 +26,8 @@ int checkForEssentials(char* keyword[],int keyLength);
 
 void printLinklist(Node* list);
 void printFormattedAcceptedBookings(Node* accepted, char *algoName,int bitModel);
+void processBookings(Node* head, void (*printBookingsFunc)(Node*, Node**, Node**), char *algoName, int acceptedModel) ;
+
 
 Node *head = NULL;
 
@@ -64,70 +66,30 @@ int main() {
             readBatchFile(keyword[1]);
 
         } else if (strcmp(keyword[0], "printBookings") == 0) {
-            if (strcmp(keyword[1], "-fcfs") == 0) {
-                Node *accepted = NULL;
-                Node *rejected = NULL;
-                print_bookings_fcfs(head, &accepted, &rejected);
-                //Doing something with accepted and rejected
-                //Print out
-                printFormattedAcceptedBookings(accepted,"FCFS",0);
-                printFormattedAcceptedBookings(rejected,"FCFS",1);
+            if (strcmp(keyword[1], "-fcfs;") == 0) {
+                processBookings(head, print_bookings_fcfs, "FCFS", 1);
+            } else if (strcmp(keyword[1], "-prio;") == 0) {
+                processBookings(head, print_bookings_priority, "PRIO", 1);
+            } else if (strcmp(keyword[1], "-ALL;") == 0) {
+                printf("*** Parking Booking Manager - Summary Report ***\n\n");
+                printf("Performance:\n\n");
 
-                free_list(accepted);
-                free_list(rejected);
-            } else if (strcmp(keyword[1], "-prio") == 0) {
-                Node *accepted = NULL;
-                Node *rejected = NULL;
-                print_bookings_priority(head, &accepted, &rejected);
-                //Doing something with accepted and rejected
-                //Print out
-                printFormattedAcceptedBookings(accepted,"PRIO",0);
-                printFormattedAcceptedBookings(rejected,"PRIO",1);
+                // Process FCFS bookings
+                Node *accepted_fcfs = NULL, *rejected_fcfs = NULL;
+                print_bookings_fcfs(head, &accepted_fcfs, &rejected_fcfs);
+                printf(" For FCFS:\n");
+                gen_report(stdout, head, accepted_fcfs, rejected_fcfs, invalid_requests);
+                free_list(accepted_fcfs);
+                free_list(rejected_fcfs);
 
-                free_list(accepted);
-                free_list(rejected);
-            } else if (strcmp(keyword[1], "-ALL") == 0) {
-                FILE* report = fopen("SMPS_Report_G31.txt", "w");
-                if (!report) {
-                    perror("Failed to create summary report");
-                } else {
-                    fprintf(report, "*** Parking Booking Manager - Summary Report ***\n\n");
-                    fprintf(report, "Performance:\n\n");
-
-                    //fcfs
-                    Node *accepted_fcfs = NULL;
-                    Node *rejected_fcfs = NULL;
-                    print_bookings_fcfs(head, &accepted_fcfs, &rejected_fcfs);
-                    //Doing something with accepted and rejected
-                    //Print out
-                    printFormattedAcceptedBookings(accepted_fcfs,"FCFS",0);
-                    printFormattedAcceptedBookings(rejected_fcfs,"FCFS",1);
-                    //Gen summary txt
-                    fprintf(report, " For FCFS:\n");
-                    gen_report(report, head, accepted_fcfs, rejected_fcfs, invalid_requests);
-
-                    free_list(accepted_fcfs);
-                    free_list(rejected_fcfs);
-
-                    //prio
-                    Node *accepted_prio = NULL;
-                    Node *rejected_prio = NULL;
-                    print_bookings_priority(head, &accepted_prio, &rejected_prio);
-                    //Doing something with accepted and rejected
-                    //Print out
-                    printFormattedAcceptedBookings(accepted_prio,"PRIO",0);
-                    printFormattedAcceptedBookings(rejected_prio,"PRIO",1);
-                    //Gen summary txt
-                    fprintf(report, " For PRIO:\n");
-                    gen_report(report, head, accepted_prio, rejected_prio, invalid_requests);
-                    
-                    free_list(accepted_prio);
-                    free_list(rejected_prio);
-
-                    fclose(report);
-                }
+                // Process PRIO bookings
+                Node *accepted_prio = NULL, *rejected_prio = NULL;
+                print_bookings_priority(head, &accepted_prio, &rejected_prio);
+                printf(" For PRIO:\n");
+                gen_report(stdout, head, accepted_prio, rejected_prio, invalid_requests);
+                free_list(accepted_prio);
+                free_list(rejected_prio);
             } else {
-                //Wrong algorithm
                 invalid_requests++;
             }
         } else if (strcmp(keyword[0], "endProgram") == 0) {
@@ -144,12 +106,23 @@ int main() {
     return 0;
 }
 
+void processBookings(Node* head, void (*printBookingsFunc)(Node*, Node**, Node**), char *algoName, int acceptedModel) {
+    Node *accepted = NULL, *rejected = NULL;
+    printBookingsFunc(head, &accepted, &rejected);
+    printFormattedAcceptedBookings(accepted, algoName, acceptedModel);
+    printFormattedAcceptedBookings(rejected, algoName, !acceptedModel);
+    free_list(accepted);
+    free_list(rejected);
+}
+
+
 void printLinklist(Node* list) {
     if (list == NULL) {
         printf("-> No bookings to display.\n");
         return;
     }
     printf("*** Parking Booking – ACCEPTED / FCFS ***\n");
+
 
     Node *current = list;
     int count = 1;
@@ -175,7 +148,7 @@ void printLinklist(Node* list) {
 
 void printFormattedAcceptedBookings(Node* accepted, char *algoName,int bitModel) {
     if (!accepted) {
-        printf("*** No accepted bookings ***\n");
+        printf("*** No rejected bookings ***\n");
         return;
     }
 
@@ -287,6 +260,7 @@ void executeCommand(char *keyword[],int keywordLength ) {
     Booking booking;
     if (strcmp(keyword[0], "addParking") == 0) {
         if (checkForaddParking(keyword, keywordLength)) {
+            booking.parking_space = 1;
             booking.priority = 2;
 
             strncpy(booking.member, keyword[1], sizeof(booking.member) - 1);
@@ -305,6 +279,7 @@ void executeCommand(char *keyword[],int keywordLength ) {
     }else if (strcmp(keyword[0], "addReservation") == 0) {
 
         if (checkForAddReservation(keyword, keywordLength)) {
+            booking.parking_space = 1;
             booking.priority = 3;
 
             strncpy(booking.member, keyword[1], sizeof(booking.member) - 1);
@@ -341,6 +316,7 @@ void executeCommand(char *keyword[],int keywordLength ) {
     } else if (strcmp(keyword[0], "addEvent") == 0) {
 
         if (checkForAddEvent(keyword, keywordLength)) {
+            booking.parking_space = 1;
             booking.priority = 4;
 
             strncpy(booking.member, keyword[1], sizeof(booking.member) - 1);
@@ -371,14 +347,12 @@ void readBatchFile(char *filename) {
 
     FILE *file = fopen(cleaned, "r");
     if (!file) {
-        invalid_requests++;
         printf("-> Could not open file: %s\n", cleaned);
         return;
     }
 
     char *buffer = malloc(100000);
     if (!buffer) {
-        invalid_requests++;
         printf("-> Memory allocation failed.\n");
         fclose(file);
         return;
@@ -421,49 +395,26 @@ void readBatchFile(char *filename) {
 
 //addParking -aaa YYYY-MM-DD hh:mm n.n bbb ccc;
 int checkForaddParking(char *keyword[],int keywordLength) {
-    if (keywordLength < 5) {
-        invalid_requests++;
-        printf("-> Invalid request: please check whether the complete command is entered.\n");
-        return 0;
-    }
+    if (keywordLength < 5) {printf("-> Invalid request: please check whether the complete command is entered.\n"); return 0;}
 
-    if (!commonInspectItem(keyword,keywordLength) ) {
-        invalid_requests++;
-        return 0;
-    }
+    if (!commonInspectItem(keyword,keywordLength) ) return 0;
+
 
     if (keywordLength < 6) return 1;
-    if (keywordLength >=8) { invalid_requests++;
-        printf("-> Booking quantity is incorrect.\n");
-        return 0;
-    }
+    if (keywordLength >=8) { printf("-> Booking quantity is incorrect.\n"); return 0; }
 
-    if ( !checkForEssentials(keyword,keywordLength)){
-        invalid_requests++;
-        printf("-> Invalid request: essentials not recognized.\n");
-        return 0;
-    }
+    if ( !checkForEssentials(keyword,keywordLength)){printf("-> Invalid request: essentials not recognized.\n"); return 0;}
 
     return 1;
 }
 
 //addReservation -aaa YYYY-MM-DD hh:mm n.n bbb ccc;
 int checkForAddReservation(char *keyword[],int keywordLength) {
-    if (keywordLength != 7) {
-        invalid_requests++;
-        printf("-> Invalid request: please check whether the complete command is entered.\n");
-        return 0;}
+    if (keywordLength != 7) {printf("-> Invalid request: please check whether the complete command is entered.\n"); return 0;}
 
-    if (!commonInspectItem(keyword,keywordLength) ) {
-        invalid_requests++;
-        return 0;
-    }
+    if (!commonInspectItem(keyword,keywordLength) ) return 0;
 
-    if (!checkForEssentials(keyword,keywordLength)) {
-        invalid_requests++;
-        printf("-> Invalid request: essentials not recognized.\n");
-        return 0;
-    }
+    if ( !checkForEssentials(keyword,keywordLength)){printf("-> Invalid request: essentials not recognized.\n"); return 0;}
 
     return 1;
 }
@@ -471,24 +422,13 @@ int checkForAddReservation(char *keyword[],int keywordLength) {
 //addEvent -aaa YYYY-MM-DD hh:mm n.n bbb ccc ddd;
 int checkForAddEvent(char *keyword[],int keywordLength) {
 
-    if (keywordLength <5 || keywordLength >8) {
-        invalid_requests++;
-        printf("-> Invalid request: please check whether the complete command is entered.\n");
-        return 0;
-    }
+    if (keywordLength <5 || keywordLength >8) {printf("-> Invalid request: please check whether the complete command is entered.\n"); return 0;}
 
-    if (!commonInspectItem(keyword,keywordLength) ) {
-        invalid_requests++;
-        return 0;
-    }
+    if (!commonInspectItem(keyword,keywordLength) ) return 0;
 
     if (keywordLength == 5) return 1;
 
-    if ( !checkForEssentials(keyword,keywordLength)){
-        invalid_requests++;
-        printf("-> Invalid request: essentials not recognized.\n");
-        return 0;
-    }
+    if ( !checkForEssentials(keyword,keywordLength)){printf("-> Invalid request: essentials not recognized.\n"); return 0;}
 
     return 1;
 }
@@ -496,22 +436,12 @@ int checkForAddEvent(char *keyword[],int keywordLength) {
 //bookEssentials –member_C 2025-05-011 13:00 4.0 battery;
 int checkForBookEssentials(char *keyword[],int keywordLength) {
 
-    if (keywordLength != 6) {
-        invalid_requests++;
-        printf("-> Invalid request: please check whether the complete command is entered.\n");
-        return 0;
-    }
+    if (keywordLength != 6) {printf("-> Invalid request: please check whether the complete command is entered.\n"); return 0;}
 
-    if (!commonInspectItem(keyword,keywordLength) ) {
-        invalid_requests++;
-        return 0;
-    }
+    if (!commonInspectItem(keyword,keywordLength) ) return 0;
 
-    if (!checkForEssentials(keyword,keywordLength)) {
-        invalid_requests++;
-        printf("-> Invalid request: essentials not recognized.\n");
-        return 0;
-    }
+    if ( !checkForEssentials(keyword,keywordLength)){printf("-> Invalid request: essentials not recognized.\n"); return 0;}
+
 
     return 1;
 }

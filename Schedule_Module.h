@@ -128,14 +128,13 @@ void resource_manager(int resource_type) {
         int start_day, end_day, start_hour, end_hour;
         int resource_id;
         int response = 0;
-        int schedule = 0;
+        int schedule;
 
         //Read request from parent
         if (read(resource_pipes_ptc[resource_type][0], &start_day, sizeof(int)) <= 0) break;
         if (read(resource_pipes_ptc[resource_type][0], &end_day, sizeof(int)) <= 0) break;
         if (read(resource_pipes_ptc[resource_type][0], &start_hour, sizeof(int)) <= 0) break;
         if (read(resource_pipes_ptc[resource_type][0], &end_hour, sizeof(int)) <= 0) break;
-
         // Check availability based on resource type
         for (resource_id = 0; resource_id < max_resource_num[resource_type]; resource_id++) {
             int available = 1;
@@ -174,10 +173,8 @@ void resource_manager(int resource_type) {
         }
         // Send response back to parent
         write(resource_pipes_ctp[resource_type][1], &response, sizeof(int));
-
         //Read schedule request
         if (read(resource_pipes_ptc[resource_type][0], &schedule, sizeof(int)) <= 0) break;
-
         if (schedule) {
             int day;
             for (day = start_day; day <= end_day; day++) {
@@ -196,9 +193,12 @@ void resource_manager(int resource_type) {
 
                 int time_slot;
                 for (time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
-                    resource_time_slot[resource_id][day][time_slot] = 1;
+                    resource_time_slot[resource_id][day][time_slot] = resource_type;
                 }
             }
+            //Send schedule complete signal
+            int receiver = 1;
+            write(resource_pipes_ctp[resource_type][1], &receiver, sizeof(int));
         }
     }
     close(resource_pipes_ptc[resource_type][0]);    //Close parent to child read end
@@ -255,7 +255,6 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
             continue;
         }
         int end_day = start_day;
-
         //Get start and end time slots
         int start_hour = atoi(booking.time);
         int end_hour = start_hour + (int)booking.duration;
@@ -269,10 +268,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
             continue;
         }
 
-
         //Check all requested space or items are available or not
         int all_request_available = 1;  //Default true
-
         //Check parking space availability
         if (booking.parking_space) {
             int available;
@@ -286,9 +283,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         //Check battery availability
-        if (booking.battery && all_request_available) {
+        if (booking.battery) {
             int available;
             write(resource_pipes_ptc[BATTERY][1], &start_day, sizeof(int));
             write(resource_pipes_ptc[BATTERY][1], &end_day, sizeof(int));
@@ -300,9 +296,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         //Check cable availability
-        if (booking.cable && all_request_available) {
+        if (booking.cable) {
             int available;
             write(resource_pipes_ptc[CABLE][1], &start_day, sizeof(int));
             write(resource_pipes_ptc[CABLE][1], &end_day, sizeof(int));
@@ -314,9 +309,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         //Check locker availability
-        if (booking.locker && all_request_available) {
+        if (booking.locker) {
             int available;
             write(resource_pipes_ptc[LOCKER][1], &start_day, sizeof(int));
             write(resource_pipes_ptc[LOCKER][1], &end_day, sizeof(int));
@@ -328,9 +322,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         //Check umbrella availability
-        if (booking.umbrella && all_request_available) {
+        if (booking.umbrella) {
             int available;
             write(resource_pipes_ptc[UMBRELLA][1], &start_day, sizeof(int));
             write(resource_pipes_ptc[UMBRELLA][1], &end_day, sizeof(int));
@@ -342,9 +335,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         //Check valet availability
-        if (booking.valet && all_request_available) {
+        if (booking.valet) {
             int available;
             write(resource_pipes_ptc[VALET][1], &start_day, sizeof(int));
             write(resource_pipes_ptc[VALET][1], &end_day, sizeof(int));
@@ -356,9 +348,8 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         //Check inflation availability
-        if (booking.inflation && all_request_available) {
+        if (booking.inflation) {
             int available;
             write(resource_pipes_ptc[INFLATION][1], &start_day, sizeof(int));
             write(resource_pipes_ptc[INFLATION][1], &end_day, sizeof(int));
@@ -370,7 +361,6 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
-
         if (all_request_available) {    //All space and items are available
             //Add to accepted list
             if (*accepted == NULL) {  //Accepted list is null
@@ -386,28 +376,41 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 append_node(rejected, booking);
             }
         }
-
         //Send schedule time slot signal
         if (booking.parking_space) {
             write(resource_pipes_ptc[SPACE][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[SPACE][0], &receiver, sizeof(int));
         }
         if (booking.battery) {
             write(resource_pipes_ptc[BATTERY][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[BATTERY][0], &receiver, sizeof(int));
         }
         if (booking.cable) {
             write(resource_pipes_ptc[CABLE][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[CABLE][0], &receiver, sizeof(int));
         }
         if (booking.locker) {
             write(resource_pipes_ptc[LOCKER][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[LOCKER][0], &receiver, sizeof(int));
         }
         if (booking.umbrella) {
             write(resource_pipes_ptc[UMBRELLA][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[UMBRELLA][0], &receiver, sizeof(int));
         }
         if (booking.valet) {
             write(resource_pipes_ptc[VALET][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[VALET][0], &receiver, sizeof(int));
         }
         if (booking.inflation) {
             write(resource_pipes_ptc[INFLATION][1], &all_request_available, sizeof(int));
+            int receiver;
+            read(resource_pipes_ctp[INFLATION][0], &receiver, sizeof(int));
         }
 
         current = current->next;
@@ -503,7 +506,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
             
             //Check battery availability
-            if (booking.battery && all_request_available) {
+            if (booking.battery) {
                 int available;
                 write(resource_pipes_ptc[BATTERY][1], &start_day, sizeof(int));
                 write(resource_pipes_ptc[BATTERY][1], &end_day, sizeof(int));
@@ -517,7 +520,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
             
             //Check cable availability
-            if (booking.cable && all_request_available) {
+            if (booking.cable) {
                 int available;
                 write(resource_pipes_ptc[CABLE][1], &start_day, sizeof(int));
                 write(resource_pipes_ptc[CABLE][1], &end_day, sizeof(int));
@@ -531,7 +534,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
             
             //Check locker availability
-            if (booking.locker && all_request_available) {
+            if (booking.locker) {
                 int available;
                 write(resource_pipes_ptc[LOCKER][1], &start_day, sizeof(int));
                 write(resource_pipes_ptc[LOCKER][1], &end_day, sizeof(int));
@@ -545,7 +548,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
 
             //Check umbrella availability
-            if (booking.umbrella && all_request_available) {
+            if (booking.umbrella) {
                 int available;
                 write(resource_pipes_ptc[UMBRELLA][1], &start_day, sizeof(int));
                 write(resource_pipes_ptc[UMBRELLA][1], &end_day, sizeof(int));
@@ -559,7 +562,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
 
             //Check valet availability
-            if (booking.valet && all_request_available) {
+            if (booking.valet) {
                 int available;
                 write(resource_pipes_ptc[VALET][1], &start_day, sizeof(int));
                 write(resource_pipes_ptc[VALET][1], &end_day, sizeof(int));
@@ -573,7 +576,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
 
             //Check inflation availability
-            if (booking.inflation && all_request_available) {
+            if (booking.inflation) {
                 int available;
                 write(resource_pipes_ptc[INFLATION][1], &start_day, sizeof(int));
                 write(resource_pipes_ptc[INFLATION][1], &end_day, sizeof(int));
@@ -605,26 +608,40 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             //Send schedule time slot signal
             if (booking.parking_space) {
                 write(resource_pipes_ptc[SPACE][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[SPACE][0], &receiver, sizeof(int));
             }
             if (booking.battery) {
                 write(resource_pipes_ptc[BATTERY][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[BATTERY][0], &receiver, sizeof(int));
             }
             if (booking.cable) {
                 write(resource_pipes_ptc[CABLE][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[CABLE][0], &receiver, sizeof(int));
             }
             if (booking.locker) {
                 write(resource_pipes_ptc[LOCKER][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[LOCKER][0], &receiver, sizeof(int));
             }
             if (booking.umbrella) {
                 write(resource_pipes_ptc[UMBRELLA][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[UMBRELLA][0], &receiver, sizeof(int));
             }
             if (booking.valet) {
                 write(resource_pipes_ptc[VALET][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[VALET][0], &receiver, sizeof(int));
             }
             if (booking.inflation) {
                 write(resource_pipes_ptc[INFLATION][1], &all_request_available, sizeof(int));
+                int receiver;
+                read(resource_pipes_ctp[INFLATION][0], &receiver, sizeof(int));
             }
-            
+
             current = current->next;
         }
     }
