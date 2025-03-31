@@ -41,8 +41,8 @@ void create_resource_managers();
 void resource_manager(int resource_type);
 void cleanup_child_processes();
 int date_to_day_index(const char* date);
-void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected);
-void print_bookings_priority(Node* head, Node** accepted, Node** rejected);
+int print_bookings_fcfs(Node* head, Node** accepted, Node** rejected);
+int print_bookings_priority(Node* head, Node** accepted, Node** rejected);
 
 Node* create_node(Booking booking) {
     //Create new node for linked list
@@ -119,7 +119,7 @@ void resource_manager(int resource_type) {
         for (day = 0; day < TESTING_DAY; day++) {
             int time_slot;
             for (time_slot = 0; time_slot < TIME_SLOT_PER_DAY; time_slot++) {
-                resource_time_slot[resource_id][day][time_slot] = -1;
+                resource_time_slot[resource_id][day][time_slot] = 0;
             }
         }
     }
@@ -155,7 +155,7 @@ void resource_manager(int resource_type) {
 
                 int time_slot;
                 for (time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
-                    if (resource_time_slot[resource_id][day][time_slot] != -1) {
+                    if (resource_time_slot[resource_id][day][time_slot] != 0) {
                         //The time slot is not available
                         available = 0;
                         break;
@@ -169,9 +169,10 @@ void resource_manager(int resource_type) {
             if (available) {
                 //The time slot is available
                 response = 1;
+                break;
             }
         }
-        // Send response back to parent
+        //Send response back to parent
         write(resource_pipes_ctp[resource_type][1], &response, sizeof(int));
         //Read schedule request
         if (read(resource_pipes_ptc[resource_type][0], &schedule, sizeof(int)) <= 0) break;
@@ -190,16 +191,15 @@ void resource_manager(int resource_type) {
                 if (day != end_day) {
                     end_time_slot = TIME_SLOT_PER_DAY - 1;
                 }
-
                 int time_slot;
                 for (time_slot = start_time_slot; time_slot <= end_time_slot; time_slot++) {
-                    resource_time_slot[resource_id][day][time_slot] = resource_type;
+                    resource_time_slot[resource_id][day][time_slot] = 1;
                 }
             }
-            //Send schedule complete signal
-            int receiver = 1;
-            write(resource_pipes_ctp[resource_type][1], &receiver, sizeof(int));
         }
+        //Send schedule complete signal
+        int receiver = 1;
+        write(resource_pipes_ctp[resource_type][1], &receiver, sizeof(int));
     }
     close(resource_pipes_ptc[resource_type][0]);    //Close parent to child read end
     close(resource_pipes_ctp[resource_type][1]);    //Close child to parent write end
@@ -239,18 +239,21 @@ int date_to_day_index(const char* date) {
     return (days >= 0) ? days : -1;
 }
 
-void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
+int print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
     create_resource_managers();
     *accepted = NULL;
     *rejected = NULL;
 
     Node* current = head;
+
+    int invalid_requests = 0;
     while (current != NULL) {
         Booking booking = current->booking;
 
         //Convert the date to day index
         int start_day = date_to_day_index(booking.date);
         if (start_day < 0 || start_day >= TESTING_DAY) {    //Not in testing period
+            invalid_requests++;
             current = current->next;
             continue;
         }
@@ -264,6 +267,7 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
         }
 
         if (end_day < 0 || end_day >= TESTING_DAY) {    //Not in testing period
+            invalid_requests++;
             current = current->next;
             continue;
         }
@@ -361,6 +365,7 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 all_request_available = 0;
             }
         }
+
         if (all_request_available) {    //All space and items are available
             //Add to accepted list
             if (*accepted == NULL) {  //Accepted list is null
@@ -376,6 +381,7 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
                 append_node(rejected, booking);
             }
         }
+
         //Send schedule time slot signal
         if (booking.parking_space) {
             write(resource_pipes_ptc[SPACE][1], &all_request_available, sizeof(int));
@@ -415,10 +421,13 @@ void print_bookings_fcfs(Node* head, Node** accepted, Node** rejected) {
 
         current = current->next;
     }
+    
     cleanup_child_processes();
+
+    return invalid_requests;
 }
 
-void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
+int print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
     create_resource_managers();
     *accepted = NULL;
     *rejected = NULL;
@@ -461,6 +470,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
     }
     
     //Process bookings in priority order (4 first, then 3, then 2, then 1)
+    int invalid_requests = 0;
     int prio;
     for (prio = 3; prio >= 0; prio--) {
         current = priority_lists[prio];
@@ -470,6 +480,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             //Convert the date to day index
             int start_day = date_to_day_index(booking.date);
             if (start_day < 0 || start_day >= TESTING_DAY) {    //Not in testing period
+                invalid_requests++;
                 current = current->next;
                 continue;
             }
@@ -484,6 +495,7 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
             }
 
             if (end_day < 0 || end_day >= TESTING_DAY) {    //Not in testing period
+                invalid_requests++;
                 current = current->next;
                 continue;
             }
@@ -653,4 +665,6 @@ void print_bookings_priority(Node* head, Node** accepted, Node** rejected) {
     }
 
     cleanup_child_processes();
+
+    return invalid_requests;
 }

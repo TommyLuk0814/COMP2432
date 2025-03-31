@@ -26,15 +26,13 @@ int checkForEssentials(char* keyword[],int keyLength);
 
 void printLinklist(Node* list);
 void printFormattedAcceptedBookings(Node* accepted, char *algoName,int bitModel);
-void processBookings(Node* head, void (*printBookingsFunc)(Node*, Node**, Node**), char *algoName, int acceptedModel) ;
+void processBookings(Node* head, int (*printBookingsFunc)(Node*, Node**, Node**), char *algoName, int acceptedModel) ;
 
 
 Node *head = NULL;
 
 const char *validMembers[] = {"member_A", "member_B", "member_C", "member_D", "member_E"};
 const char *validEssentials[] = {"battery", "cable", "locker","umbrella","InflationService","valetpark"};
-
-int invalid_requests = 0;
 
 int main() {
     printf("~~ WELCOME TO PolyU ~~\n");
@@ -71,12 +69,13 @@ int main() {
             } else if (strcmp(keyword[1], "-prio;") == 0) {
                 processBookings(head, print_bookings_priority, "PRIO", 1);
             } else if (strcmp(keyword[1], "-ALL;") == 0) {
+                int invalid_requests;
                 printf("*** Parking Booking Manager - Summary Report ***\n\n");
                 printf("Performance:\n\n");
 
                 // Process FCFS bookings
                 Node *accepted_fcfs = NULL, *rejected_fcfs = NULL;
-                print_bookings_fcfs(head, &accepted_fcfs, &rejected_fcfs);
+                invalid_requests = print_bookings_fcfs(head, &accepted_fcfs, &rejected_fcfs);
                 printf(" For FCFS:\n");
                 gen_report(stdout, head, accepted_fcfs, rejected_fcfs, invalid_requests);
                 free_list(accepted_fcfs);
@@ -84,13 +83,11 @@ int main() {
 
                 // Process PRIO bookings
                 Node *accepted_prio = NULL, *rejected_prio = NULL;
-                print_bookings_priority(head, &accepted_prio, &rejected_prio);
+                invalid_requests = print_bookings_priority(head, &accepted_prio, &rejected_prio);
                 printf(" For PRIO:\n");
                 gen_report(stdout, head, accepted_prio, rejected_prio, invalid_requests);
                 free_list(accepted_prio);
                 free_list(rejected_prio);
-            } else {
-                invalid_requests++;
             }
         } else if (strcmp(keyword[0], "endProgram") == 0) {
             printf("-> Bye!\n");
@@ -98,7 +95,6 @@ int main() {
         } else if (strcmp(keyword[0], "print") == 0) {
             printLinklist(head);
         } else {
-            invalid_requests++;
             printf("-> Please check your command again.\n");
         }
     }
@@ -106,7 +102,7 @@ int main() {
     return 0;
 }
 
-void processBookings(Node* head, void (*printBookingsFunc)(Node*, Node**, Node**), char *algoName, int acceptedModel) {
+void processBookings(Node* head, int (*printBookingsFunc)(Node*, Node**, Node**), char *algoName, int acceptedModel) {
     Node *accepted = NULL, *rejected = NULL;
     printBookingsFunc(head, &accepted, &rejected);
     printFormattedAcceptedBookings(accepted, algoName, acceptedModel);
